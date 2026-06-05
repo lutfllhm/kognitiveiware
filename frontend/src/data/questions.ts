@@ -328,14 +328,14 @@ export const questions: Question[] = [
   {
     id: 46,
     type: "isian",
-    text: "Soal untuk no 46-47",
+    text: "Soal untuk no 46-47\n\nPerhatikan potongan-potongan gambar di bawah ini. Pilih salah satu jawaban (1–5) yang merupakan bentuk utuh yang dapat dibentuk dari seluruh potongan tersebut. Setiap potongan hanya dapat digunakan satu kali dan tidak saling bertumpuk.",
     image: "/soal/46.png",
     headerImage: "/soal/petunjuk_46_47.png",
   },
   {
     id: 47,
     type: "isian",
-    text: "Soal untuk no 46-47",
+    text: "Soal untuk no 46-47\n\nPerhatikan potongan-potongan gambar di bawah ini. Pilih salah satu jawaban (1–5) yang merupakan bentuk utuh yang dapat dibentuk dari seluruh potongan tersebut. Setiap potongan hanya dapat digunakan satu kali dan tidak saling bertumpuk.",
     image: "/soal/47.png",
     headerImage: "/soal/petunjuk_46_47.png",
   },
