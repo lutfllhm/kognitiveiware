@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  tesiware-db:
+    image: mysql:8.0
+    container_name: tesiware-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: tesiware_root_password
+      MYSQL_DATABASE: tesiware
+    ports:
+      - "3308:3306"
+    volumes:
+      - tesiware_db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - tesiware-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p=tesiware_root_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tesiware-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tesiware-backend
+    restart: always
+    environment:
+      PORT: 5000
+      DB_HOST: tesiware-db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: tesiware_root_password
+      DB_NAME: tesiware
+      FRONTEND_URL: https://cognitive.iwareid.com
+    ports:
+      - "5002:5000"
+    depends_on:
+      tesiware-db:
+        condition: service_healthy
+    networks:
+      - tesiware-network
+
+  tesiware-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://cognitive.iwareid.com/api
+    container_name: tesiware-frontend
+    restart: always
+    ports:
+      - "8085:3000"
+    depends_on:
+      - tesiware-backend
+    networks:
+      - tesiware-network
+
+volumes:
+  tesiware_db_data:
+
+networks:
+  tesiware-network:
+    driver: bridge
