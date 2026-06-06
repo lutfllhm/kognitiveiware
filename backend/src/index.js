@@ -14,7 +14,7 @@ const authRouter = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const HOST = '0.0.0.0';
+const HOST = '[IP_ADDRESS]';
 
 // Middleware
 app.use(cors({
