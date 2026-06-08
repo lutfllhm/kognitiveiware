@@ -7,13 +7,67 @@ const getApiUrl = () => {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   if (typeof window !== "undefined") {
-    // Dynamically use the current hostname to access the backend on port 5000
+    const hostname = window.location.hostname;
+    // Check if it's local development (localhost or local IP)
+    const isLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.");
+
+    if (!isLocal) {
+      // Production: use relative path to route through Nginx proxy
+      return `${window.location.origin}/api`;
+    }
+    // Development: fallback dynamically using current hostname and port 5000
     return `http://${window.location.hostname}:5000/api`;
   }
   return "http://localhost:5000/api";
 };
 
 const API_URL = getApiUrl();
+
+// Safe fetch wrapper to handle JSON & HTML errors (e.g., Nginx 502/504)
+async function apiFetch(path: string, options?: RequestInit) {
+  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  const res = await fetch(url, options);
+  
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+
+  if (!res.ok) {
+    let errorMessage = `HTTP error! status: ${res.status}`;
+    if (isJson) {
+      try {
+        const err = await res.json();
+        errorMessage = err.error || errorMessage;
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      try {
+        const text = await res.text();
+        if (text.includes("502 Bad Gateway") || text.includes("Gateway")) {
+          errorMessage = "Server backend sedang tidak aktif atau terjadi error (502 Bad Gateway). Silakan hubungi administrator.";
+        } else if (text.includes("504 Gateway Timeout")) {
+          errorMessage = "Koneksi ke backend mengalami timeout (504 Gateway Timeout).";
+        } else {
+          errorMessage = `Terjadi kesalahan server (Status: ${res.status})`;
+        }
+      } catch (e) {
+        errorMessage = `Terjadi kesalahan koneksi server (Status: ${res.status})`;
+      }
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (isJson) {
+    return res.json();
+  }
+  
+  return res.text();
+}
 
 // ---- Participants ----
 
@@ -27,73 +81,49 @@ export interface ParticipantData {
 }
 
 export async function createParticipant(data: ParticipantData) {
-  const res = await fetch(`${API_URL}/participants`, {
+  return apiFetch("/participants", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal menyimpan biodata");
-  }
-  return res.json();
 }
 
 export async function getParticipants() {
-  const res = await fetch(`${API_URL}/participants`);
-  if (!res.ok) throw new Error("Gagal memuat data peserta");
-  return res.json();
+  return apiFetch("/participants");
 }
 
 export async function getParticipantDetail(id: number) {
-  const res = await fetch(`${API_URL}/participants/${id}`);
-  if (!res.ok) throw new Error("Gagal memuat detail peserta");
-  return res.json();
+  return apiFetch(`/participants/${id}`);
 }
 
 export async function deleteParticipant(id: number) {
-  const res = await fetch(`${API_URL}/participants/${id}`, {
+  return apiFetch(`/participants/${id}`, {
     method: "DELETE",
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal menghapus peserta");
-  }
-  return res.json();
 }
 
 // ---- Sessions ----
 
 export async function createSession(participantId: number) {
-  const res = await fetch(`${API_URL}/sessions`, {
+  return apiFetch("/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ participant_id: participantId }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal membuat sesi");
-  }
-  return res.json();
 }
 
 export async function finishSession(participantId: number, status: "selesai" | "timeout") {
-  const res = await fetch(`${API_URL}/sessions/finish`, {
+  return apiFetch("/sessions/finish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ participant_id: participantId, status }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal menyelesaikan sesi");
-  }
-  return res.json();
 }
 
 // ---- Answers ----
 
 export async function saveAnswer(participantId: number, questionId: number, jawaban: string) {
-  const res = await fetch(`${API_URL}/answers`, {
+  return apiFetch("/answers", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -102,18 +132,13 @@ export async function saveAnswer(participantId: number, questionId: number, jawa
       jawaban,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal menyimpan jawaban");
-  }
-  return res.json();
 }
 
 export async function saveBulkAnswers(
   participantId: number,
   answers: Array<{ question_id: number; jawaban: string }>
 ) {
-  const res = await fetch(`${API_URL}/answers/bulk`, {
+  return apiFetch("/answers/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -121,48 +146,35 @@ export async function saveBulkAnswers(
       answers,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Gagal menyimpan jawaban");
-  }
-  return res.json();
 }
 
 export async function getAnswers(participantId: number) {
-  const res = await fetch(`${API_URL}/answers/${participantId}`);
-  if (!res.ok) throw new Error("Gagal memuat jawaban");
-  return res.json();
+  return apiFetch(`/answers/${participantId}`);
 }
 
 // ---- Auth ----
 
 export async function adminLogin(username: string, password: string) {
-  const res = await fetch(`${API_URL}/auth/login`, {
+  return apiFetch("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Login gagal");
-  }
-  return res.json();
 }
 
 export async function verifyToken(token: string) {
-  const res = await fetch(`${API_URL}/auth/verify`, {
+  return apiFetch("/auth/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
-  });
-  if (!res.ok) return { valid: false };
-  return res.json();
+  }).catch(() => ({ valid: false }));
 }
 
 export async function adminLogout(token: string) {
-  await fetch(`${API_URL}/auth/logout`, {
+  await apiFetch("/auth/logout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
-  });
+  }).catch(() => {});
 }
+
