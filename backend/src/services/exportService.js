@@ -19,7 +19,6 @@ const BIODATA_LABELS = [
   ['Pendidikan Terakhir', 'pendidikan_terakhir'],
   ['Posisi', 'posisi'],
   ['Lokasi Kerja', 'lokasi_kerja'],
-  ['Tanggal', 'tanggal'],
 ];
 
 function formatDate(value) {
@@ -30,6 +29,15 @@ function formatDate(value) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+function formatDateOnly(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 }
 
@@ -46,6 +54,7 @@ async function buildParticipantExcel({ participant, session, answers }) {
   for (const [label, key] of BIODATA_LABELS) {
     sheet.addRow([label, String(participant[key])]);
   }
+  sheet.addRow(['Tanggal', formatDateOnly(participant.tanggal)]);
   sheet.addRow(['Status Sesi', session ? session.status : '-']);
   sheet.addRow(['Waktu Mulai', session ? formatDate(session.waktu_mulai) : '-']);
   sheet.addRow(['Waktu Selesai', session && session.waktu_selesai ? formatDate(session.waktu_selesai) : '-']);
@@ -69,6 +78,7 @@ function buildParticipantPdf({ participant, session, answers }) {
     { text: label, bold: true },
     String(participant[key]),
   ]);
+  biodataBody.push([{ text: 'Tanggal', bold: true }, formatDateOnly(participant.tanggal)]);
   biodataBody.push([{ text: 'Status Sesi', bold: true }, session ? session.status : '-']);
   biodataBody.push([{ text: 'Waktu Mulai', bold: true }, session ? formatDate(session.waktu_mulai) : '-']);
   biodataBody.push([
