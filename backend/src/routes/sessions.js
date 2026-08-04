@@ -59,23 +59,14 @@ router.post('/finish', async (req, res) => {
 
     const finishStatus = status === 'timeout' ? 'timeout' : 'selesai';
 
-    // Calculate score from answers
-    const [answers] = await pool.execute(
-      'SELECT is_correct FROM answers WHERE participant_id = ? AND is_correct IS NOT NULL',
-      [participant_id]
-    );
-
-    const skor = answers.filter(a => a.is_correct === 1).length;
-
     await pool.execute(
-      'UPDATE sessions SET waktu_selesai = NOW(), status = ?, skor = ? WHERE participant_id = ? AND status = ?',
-      [finishStatus, skor, participant_id, 'berlangsung']
+      'UPDATE sessions SET waktu_selesai = NOW(), status = ? WHERE participant_id = ? AND status = ?',
+      [finishStatus, participant_id, 'berlangsung']
     );
 
     res.json({
       message: 'Sesi tes selesai',
-      status: finishStatus,
-      skor
+      status: finishStatus
     });
   } catch (error) {
     console.error('Error finishing session:', error);

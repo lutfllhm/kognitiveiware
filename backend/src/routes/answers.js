@@ -15,28 +15,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'participant_id dan question_id wajib' });
     }
 
-    // Check if answer key exists for auto-scoring
-    const [questions] = await pool.execute(
-      'SELECT kunci_jawaban FROM questions WHERE id = ?',
-      [question_id]
-    );
-
-    let is_correct = null;
-    if (questions.length > 0 && questions[0].kunci_jawaban) {
-      const keys = questions[0].kunci_jawaban.split('|').map(k => k.trim().toLowerCase());
-      const answer = (jawaban || '').trim().toLowerCase();
-      is_correct = keys.includes(answer) ? 1 : 0;
-    }
-
     // Upsert: insert or update on duplicate key
     await pool.execute(
-      `INSERT INTO answers (participant_id, question_id, jawaban, is_correct)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE jawaban = VALUES(jawaban), is_correct = VALUES(is_correct), updated_at = CURRENT_TIMESTAMP`,
-      [participant_id, question_id, jawaban || null, is_correct]
+      `INSERT INTO answers (participant_id, question_id, jawaban)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE jawaban = VALUES(jawaban), updated_at = CURRENT_TIMESTAMP`,
+      [participant_id, question_id, jawaban || null]
     );
 
-    res.json({ message: 'Jawaban tersimpan', is_correct });
+    res.json({ message: 'Jawaban tersimpan' });
   } catch (error) {
     console.error('Error saving answer:', error);
     res.status(500).json({ error: 'Terjadi kesalahan server' });
@@ -57,23 +44,11 @@ router.post('/bulk', async (req, res) => {
       await connection.beginTransaction();
 
       for (const answer of answers) {
-        const [questions] = await connection.execute(
-          'SELECT kunci_jawaban FROM questions WHERE id = ?',
-          [answer.question_id]
-        );
-
-        let is_correct = null;
-        if (questions.length > 0 && questions[0].kunci_jawaban) {
-          const keys = questions[0].kunci_jawaban.split('|').map(k => k.trim().toLowerCase());
-          const ans = (answer.jawaban || '').trim().toLowerCase();
-          is_correct = keys.includes(ans) ? 1 : 0;
-        }
-
         await connection.execute(
-          `INSERT INTO answers (participant_id, question_id, jawaban, is_correct)
-           VALUES (?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE jawaban = VALUES(jawaban), is_correct = VALUES(is_correct), updated_at = CURRENT_TIMESTAMP`,
-          [participant_id, answer.question_id, answer.jawaban || null, is_correct]
+          `INSERT INTO answers (participant_id, question_id, jawaban)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE jawaban = VALUES(jawaban), updated_at = CURRENT_TIMESTAMP`,
+          [participant_id, answer.question_id, answer.jawaban || null]
         );
       }
 
@@ -95,7 +70,7 @@ router.post('/bulk', async (req, res) => {
 router.get('/:participantId', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT a.*, q.teks_soal, q.tipe, q.kunci_jawaban
+      `SELECT a.*, q.teks_soal, q.tipe
        FROM answers a
        JOIN questions q ON a.question_id = q.id
        WHERE a.participant_id = ?
@@ -103,14 +78,7 @@ router.get('/:participantId', async (req, res) => {
       [req.params.participantId]
     );
 
-    // Calculate score
-    const totalWithKey = rows.filter(r => r.kunci_jawaban !== null).length;
-    const correct = rows.filter(r => r.is_correct === 1).length;
-
-    res.json({
-      answers: rows,
-      score: { correct, total: totalWithKey }
-    });
+    res.json({ answers: rows });
   } catch (error) {
     console.error('Error fetching answers:', error);
     res.status(500).json({ error: 'Terjadi kesalahan server' });

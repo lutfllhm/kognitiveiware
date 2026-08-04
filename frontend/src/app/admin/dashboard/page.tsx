@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { getParticipants, getParticipantDetail, verifyToken, adminLogout, deleteParticipant } from "@/lib/api";
+import { getParticipants, getParticipantDetail, verifyToken, adminLogout, deleteParticipant, getExportUrl } from "@/lib/api";
 
 interface Participant {
   id: number;
@@ -17,16 +17,13 @@ interface Participant {
   session_status: string | null;
   waktu_mulai: string | null;
   waktu_selesai: string | null;
-  skor: number | null;
 }
 
 interface AnswerDetail {
   question_id: number;
   jawaban: string;
-  is_correct: number | null;
   teks_soal: string;
   tipe: string;
-  kunci_jawaban: string | null;
 }
 
 interface ParticipantDetail {
@@ -36,7 +33,6 @@ interface ParticipantDetail {
     status: string;
     waktu_mulai: string;
     waktu_selesai: string;
-    skor: number;
   } | null;
 }
 
@@ -302,7 +298,6 @@ export default function AdminDashboardPage() {
                         <th className="text-left py-3 px-4 font-semibold text-muted text-xs uppercase tracking-wider hidden sm:table-cell">Posisi</th>
                         <th className="text-left py-3 px-4 font-semibold text-muted text-xs uppercase tracking-wider hidden md:table-cell">Lokasi</th>
                         <th className="text-left py-3 px-4 font-semibold text-muted text-xs uppercase tracking-wider">Status</th>
-                        <th className="text-left py-3 px-4 font-semibold text-muted text-xs uppercase tracking-wider hidden md:table-cell">Skor</th>
                         <th className="text-left py-3 px-4 font-semibold text-muted text-xs uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
@@ -322,13 +317,6 @@ export default function AdminDashboardPage() {
                           <td className="py-3 px-4 hidden sm:table-cell text-muted">{p.posisi}</td>
                           <td className="py-3 px-4 hidden md:table-cell text-muted">{p.lokasi_kerja}</td>
                           <td className="py-3 px-4">{getStatusBadge(p.session_status)}</td>
-                          <td className="py-3 px-4 hidden md:table-cell">
-                            {p.skor !== null ? (
-                              <span className="font-bold text-primary">{p.skor}</span>
-                            ) : (
-                              <span className="text-muted">-</span>
-                            )}
-                          </td>
                            <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
                               <button
@@ -429,10 +417,6 @@ export default function AdminDashboardPage() {
                             <span className="font-medium text-sm">{formatDateTime(detail.session.waktu_selesai)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between text-sm">
-                          <span className="text-blue-600">Skor</span>
-                          <span className="font-bold text-primary text-lg">{detail.session.skor ?? "-"}</span>
-                        </div>
                       </div>
                     )}
 
@@ -445,34 +429,38 @@ export default function AdminDashboardPage() {
                         {detail.answers.map((a) => (
                           <div
                             key={a.question_id}
-                            className={`p-3 rounded-lg border text-xs ${
-                              a.is_correct === 1
-                                ? "bg-success/5 border-success/20"
-                                : a.is_correct === 0
-                                ? "bg-danger/5 border-danger/20"
-                                : "bg-surface-alt border-border"
-                            }`}
+                            className="p-3 rounded-lg border text-xs bg-surface-alt border-border"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <span className="font-semibold text-muted flex-shrink-0">#{a.question_id}</span>
                               <span className="font-medium text-foreground text-right">{a.jawaban || "-"}</span>
                             </div>
-                            {a.kunci_jawaban && (
-                              <div className="mt-1 flex items-center justify-between">
-                                <span className="text-muted">Kunci: {a.kunci_jawaban}</span>
-                                {a.is_correct === 1 ? (
-                                  <span className="text-success font-semibold">✓ Benar</span>
-                                ) : a.is_correct === 0 ? (
-                                  <span className="text-danger font-semibold">✗ Salah</span>
-                                ) : null}
-                              </div>
-                            )}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-border animate-fade-in">
+                    <div className="mt-6 pt-4 border-t border-border animate-fade-in space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => window.open(getExportUrl(detail.participant.id, "pdf"), "_blank")}
+                          className="btn-secondary py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download PDF
+                        </button>
+                        <button
+                          onClick={() => window.open(getExportUrl(detail.participant.id, "excel"), "_blank")}
+                          className="btn-secondary py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download Excel
+                        </button>
+                      </div>
                       <button
                         onClick={() => initiateDelete(detail.participant.id, detail.participant.nama_lengkap)}
                         className="w-full btn-danger py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm"
@@ -508,8 +496,8 @@ export default function AdminDashboardPage() {
             </div>
 
             <p className="text-sm text-muted mb-6 leading-relaxed">
-              Apakah Anda yakin ingin menghapus peserta <strong className="text-foreground">"{deleteTarget.name}"</strong>? 
-              Seluruh biodata, hasil skor, dan semua jawaban tes peserta ini akan dihapus secara permanen dari database.
+              Apakah Anda yakin ingin menghapus peserta <strong className="text-foreground">"{deleteTarget.name}"</strong>?
+              Seluruh biodata dan semua jawaban tes peserta ini akan dihapus secara permanen dari database.
             </p>
 
             <div className="flex items-center justify-end gap-3">

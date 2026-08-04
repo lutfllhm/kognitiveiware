@@ -102,6 +102,10 @@ export async function deleteParticipant(id: number) {
   });
 }
 
+export function getExportUrl(id: number, format: "excel" | "pdf") {
+  return `${API_URL}/participants/${id}/export/${format}`;
+}
+
 // ---- Sessions ----
 
 export async function createSession(participantId: number) {
