@@ -41,6 +41,20 @@ function formatDateOnly(value) {
   });
 }
 
+function formatJawaban(answer) {
+  if (!answer.jawaban) return '-';
+
+  if (answer.tipe === 'pilihan_ganda' && answer.opsi) {
+    const opsi = typeof answer.opsi === 'string' ? JSON.parse(answer.opsi) : answer.opsi;
+    const match = opsi.find(
+      (o) => o.trim().toLowerCase().startsWith(`${answer.jawaban.trim().toLowerCase()}.`)
+    );
+    if (match) return match;
+  }
+
+  return answer.jawaban;
+}
+
 async function buildParticipantExcel({ participant, session, answers }) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Jawaban Peserta');
@@ -64,7 +78,7 @@ async function buildParticipantExcel({ participant, session, answers }) {
   headerRow.font = { bold: true };
 
   for (const answer of answers) {
-    sheet.addRow([answer.question_id, answer.teks_soal, answer.jawaban || '-']);
+    sheet.addRow([answer.question_id, answer.teks_soal, formatJawaban(answer)]);
   }
 
   sheet.getColumn(2).alignment = { wrapText: true, vertical: 'top' };
@@ -88,7 +102,7 @@ function buildParticipantPdf({ participant, session, answers }) {
 
   const answersBody = [
     [{ text: 'No', bold: true }, { text: 'Soal', bold: true }, { text: 'Jawaban Peserta', bold: true }],
-    ...answers.map((a) => [String(a.question_id), a.teks_soal, a.jawaban || '-']),
+    ...answers.map((a) => [String(a.question_id), a.teks_soal, formatJawaban(a)]),
   ];
 
   const docDefinition = {

@@ -135,6 +135,12 @@ router.get('/:id/export/pdf', async (req, res) => {
       return res.status(404).json({ error: 'Peserta tidak ditemukan' });
     }
 
+    if (detail.answers[0]) {
+      const sample = detail.answers[0].teks_soal;
+      console.log('[DEBUG export/pdf] sample teks_soal:', JSON.stringify(sample));
+      console.log('[DEBUG export/pdf] sample bytes (hex):', Buffer.from(sample, 'utf8').toString('hex').slice(0, 200));
+    }
+
     const filename = `${sanitizeFilename(detail.participant.nama_lengkap)}-jawaban.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
