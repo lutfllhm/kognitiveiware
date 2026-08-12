@@ -9,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: tesiware_root_password
       MYSQL_DATABASE: tesiware
     ports:
-      - "3308:3306"
+      - "3309:3306"
     volumes:
       - tesiware_db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
